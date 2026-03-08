@@ -1,8 +1,8 @@
 import logo from './logo.svg';
 import './App.css';
 
-// import SchoolSystem from './SchoolSystem';
-// export default function App() { return <SchoolSystem />; }
+import SchoolSystem from './SchoolSystem';
+export default function App() { return <SchoolSystem />; }
 
 function App() {
   return (
