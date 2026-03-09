@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // GOOGLE SHEETS CONFIG - Update these values after setup
 // ============================================================
 const SHEET_CONFIG = {
-  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxhcJPf2ukg7xkszDPCENK-4q8NB8XI3rPX831TNTbLqCy69w6IlY4RnDmrbYeaBQ/exec",
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyFaRFGIdNALewdfePt8XNSwoygzIxyR6pOkOwXIZAwol3wBN6sh7zz_ppZ0bBE_p8/exec://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
   // Replace YOUR_DEPLOYMENT_ID with your Apps Script deployment ID
 };
 
@@ -92,7 +92,7 @@ const api = {
 // ============================================================
 // LOCAL STORAGE / DEMO DATA (for offline / demo mode)
 // ============================================================
-const DEMO_MODE = false; // Set to false when Google Sheets is configured
+const DEMO_MODE = true; // Set to false when Google Sheets is configured
 
 const initLocalData = () => {
   const defaults = {
@@ -113,9 +113,9 @@ const initLocalData = () => {
       { id: 4, classid: "C004", classname: "Grade 2B" },
     ],
     students: [
-      { id: 1, studentid: "S001", name: "Alice Brown", nin: "NIN001", parent1: "Bob Brown", parent2: "Carol Brown", contact: "+1112223333", email: "alice@parent.com", locationid: 1, transport: "Yes", joineddate: "2022-09-01", active: true },
-      { id: 2, studentid: "S002", name: "Tom Davis", nin: "NIN002", parent1: "Mike Davis", parent2: "Sue Davis", contact: "+4445556666", email: "tom@parent.com", locationid: 2, transport: "No", joineddate: "2022-09-01", active: true },
-      { id: 3, studentid: "S003", name: "Emma Wilson", nin: "NIN003", parent1: "James Wilson", parent2: "Kate Wilson", contact: "+7778889999", email: "emma@parent.com", locationid: 1, transport: "Yes", joineddate: "2023-01-10", active: true },
+      { id: 1, studentid: "S001", name: "Alice Brown", nin: "NIN001", dob: "2015-04-12", gender: "Female", parent1: "Bob Brown", parent2: "Carol Brown", contact: "+1112223333", email: "alice@parent.com", locationid: 1, classid: 1, transport: "Yes", joineddate: "2022-09-01", active: true },
+      { id: 2, studentid: "S002", name: "Tom Davis",   nin: "NIN002", dob: "2014-09-25", gender: "Male",   parent1: "Mike Davis",  parent2: "Sue Davis",   contact: "+4445556666", email: "tom@parent.com",   locationid: 2, classid: 1, transport: "No",  joineddate: "2022-09-01", active: true },
+      { id: 3, studentid: "S003", name: "Emma Wilson", nin: "NIN003", dob: "2016-01-07", gender: "Female", parent1: "James Wilson",parent2: "Kate Wilson", contact: "+7778889999", email: "emma@parent.com", locationid: 1, classid: 2, transport: "Yes", joineddate: "2023-01-10", active: true },
     ],
     locations: [
       { id: 1, locationid: "L001", name: "Downtown", region: "North" },
@@ -325,6 +325,74 @@ const ExportBar = ({ onExportCSV, onExportPDF }) => (
   </div>
 );
 
+// ---- PAGINATION ----
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+
+const Pagination = ({ currentPage, totalPages, totalRecords, pageSize, onPageChange, onPageSizeChange }) => {
+  if (totalRecords === 0) return null;
+
+  const from = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const to   = Math.min(currentPage * pageSize, totalRecords);
+
+  // Build visible page numbers: always show first, last, current ±2
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      pages.push(i);
+    }
+  }
+  // Insert ellipsis markers
+  const pageButtons = [];
+  for (let idx = 0; idx < pages.length; idx++) {
+    if (idx > 0 && pages[idx] - pages[idx - 1] > 1) {
+      pageButtons.push("...");
+    }
+    pageButtons.push(pages[idx]);
+  }
+
+  const btnBase = { minWidth: 32, height: 32, borderRadius: 6, border: "1px solid #e2e8f0", cursor: "pointer", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" };
+
+  return (
+    <div style={{ padding: "12px 20px", borderTop: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", background: "#fafbfc" }}>
+      {/* Left: rows per page + record count */}
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, color: THEME.muted }}>Rows per page:</span>
+        <select value={pageSize} onChange={e => { onPageSizeChange(Number(e.target.value)); onPageChange(1); }}
+          style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13, background: "#fff", cursor: "pointer" }}>
+          {PAGE_SIZE_OPTIONS.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <span style={{ fontSize: 13, color: THEME.muted }}>
+          Showing <strong style={{ color: THEME.text }}>{from}–{to}</strong> of <strong style={{ color: THEME.text }}>{totalRecords}</strong> records
+        </span>
+      </div>
+
+      {/* Right: page buttons */}
+      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <button onClick={() => onPageChange(1)} disabled={currentPage === 1}
+          style={{ ...btnBase, background: currentPage === 1 ? "#f1f5f9" : "#fff", color: currentPage === 1 ? "#94a3b8" : THEME.primary, padding: "0 10px" }} title="First">«</button>
+        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}
+          style={{ ...btnBase, background: currentPage === 1 ? "#f1f5f9" : "#fff", color: currentPage === 1 ? "#94a3b8" : THEME.primary, padding: "0 10px" }} title="Previous">‹</button>
+
+        {pageButtons.map((p, i) =>
+          p === "..." ? (
+            <span key={`e${i}`} style={{ padding: "0 4px", color: THEME.muted, fontSize: 13 }}>…</span>
+          ) : (
+            <button key={p} onClick={() => onPageChange(p)}
+              style={{ ...btnBase, background: p === currentPage ? THEME.primary : "#fff", color: p === currentPage ? "#fff" : THEME.text, borderColor: p === currentPage ? THEME.primary : "#e2e8f0", padding: "0 10px" }}>
+              {p}
+            </button>
+          )
+        )}
+
+        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}
+          style={{ ...btnBase, background: currentPage === totalPages ? "#f1f5f9" : "#fff", color: currentPage === totalPages ? "#94a3b8" : THEME.primary, padding: "0 10px" }} title="Next">›</button>
+        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}
+          style={{ ...btnBase, background: currentPage === totalPages ? "#f1f5f9" : "#fff", color: currentPage === totalPages ? "#94a3b8" : THEME.primary, padding: "0 10px" }} title="Last">»</button>
+      </div>
+    </div>
+  );
+};
+
 // ============================================================
 // PAGE COMPONENTS
 // ============================================================
@@ -449,6 +517,8 @@ const CRUDPage = ({ title, icon, table, columns, formFields, defaultForm, search
   const [form, setForm] = useState(defaultForm);
   const [alert, setAlert] = useState(null);
   const [editId, setEditId] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const canAdd    = hasPerm(userRole, moduleKey || table, "add");
   const canEdit   = hasPerm(userRole, moduleKey || table, "edit");
@@ -457,10 +527,17 @@ const CRUDPage = ({ title, icon, table, columns, formFields, defaultForm, search
 
   useEffect(() => { setData(localDB.get(table)); }, [table]);
 
+  // Reset to page 1 whenever search changes
+  useEffect(() => { setPage(1); }, [search]);
+
   const filtered = data.filter(r => {
     const val = r[searchKey] || "";
     return val.toString().toLowerCase().includes(search.toLowerCase());
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage   = Math.min(page, totalPages);
+  const pageData   = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const showAlert = (type, msg) => { setAlert({ type, msg }); setTimeout(() => setAlert(null), 3000); };
 
@@ -495,16 +572,26 @@ const CRUDPage = ({ title, icon, table, columns, formFields, defaultForm, search
       </div>
       {alert && <Alert type={alert.type} message={alert.msg} onClose={() => setAlert(null)} />}
       <div style={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 4px rgba(0,0,0,0.08)", overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
           <SearchBar value={search} onChange={setSearch} />
-          <span style={{ marginLeft: "auto", color: THEME.muted, fontSize: "13px", alignSelf: "center" }}>{filtered.length} records</span>
+          <span style={{ marginLeft: "auto", color: THEME.muted, fontSize: "13px" }}>
+            {filtered.length} record{filtered.length !== 1 ? "s" : ""} found
+          </span>
         </div>
-        <Table columns={columns} data={filtered} actions={(canEdit || canDelete) ? (row) => (
+        <Table columns={columns} data={pageData} actions={(canEdit || canDelete) ? (row) => (
           <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
             {canEdit   && <Btn variant="outline" size="sm" onClick={() => openEdit(row)}>✏️</Btn>}
             {canDelete && <Btn variant="danger"  size="sm" onClick={() => openDel(row)}>🗑️</Btn>}
           </div>
         ) : undefined} />
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          totalRecords={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {modal === "form" && (
@@ -970,18 +1057,27 @@ const Reports = ({ userRole = "Admin" }) => {
     const loc = locations.find(l => l.id === s.locationid);
     if (locationFilter && s.locationid !== parseInt(locationFilter)) return false;
     if (regionFilter && loc?.region !== regionFilter) return false;
+    if (studentClassFilter && parseInt(s.classid) !== parseInt(studentClassFilter)) return false;
     return true;
   }).map(s => {
     const loc = locations.find(l => l.id === s.locationid);
-    return { ...s, locationname: loc?.name || "", region: loc?.region || "" };
+    const cls = classes.find(c => c.id === parseInt(s.classid));
+    return { ...s, locationname: loc?.name || "", region: loc?.region || "", classname: cls?.classname || "" };
   });
 
   const studentCols = [
-    { key: "studentid", label: "ID" }, { key: "name", label: "Name" },
-    { key: "nin", label: "NIN" }, { key: "parent1", label: "Parent 1" },
-    { key: "contact", label: "Contact" }, { key: "locationname", label: "Location" },
-    { key: "region", label: "Region" }, { key: "transport", label: "Transport" },
-    { key: "active", label: "Status", render: v => <Badge color={v ? "green" : "gray"}>{v ? "Active" : "Inactive"}</Badge> },
+    { key: "studentid",   label: "ID" },
+    { key: "name",        label: "Name" },
+    { key: "nin",         label: "NIN" },
+    { key: "dob",         label: "Date of Birth", render: v => formatDate(v) },
+    { key: "gender",      label: "Gender" },
+    { key: "classname",   label: "Class" },
+    { key: "parent1",     label: "Parent 1" },
+    { key: "contact",     label: "Contact" },
+    { key: "locationname",label: "Location" },
+    { key: "region",      label: "Region" },
+    { key: "transport",   label: "Transport" },
+    { key: "active",      label: "Status", render: v => <Badge color={v ? "green" : "gray"}>{v ? "Active" : "Inactive"}</Badge> },
   ];
 
   const filteredAttendance = attendance.filter(a => {
@@ -1200,26 +1296,35 @@ export default function SchoolSystem() {
     />,
     students: <CRUDPage title="Students" icon="👨‍🎓" table="students" moduleKey="students" searchKey="name" userRole={role}
       columns={[
-        { key: "studentid", label: "Student ID" }, { key: "name", label: "Name" },
-        { key: "nin", label: "NIN" }, { key: "parent1", label: "Parent 1" },
-        { key: "contact", label: "Contact" }, { key: "transport", label: "Transport" },
-        { key: "joineddate", label: "Joined", render: v => formatDate(v) },
-        { key: "active", label: "Status", render: v => <Badge color={v ? "green" : "gray"}>{v ? "Active" : "Inactive"}</Badge> },
+        { key: "studentid", label: "Student ID" },
+        { key: "name",      label: "Name" },
+        { key: "nin",       label: "NIN" },
+        { key: "dob",       label: "Date of Birth", render: v => formatDate(v) },
+        { key: "gender",    label: "Gender" },
+        { key: "classid",   label: "Class", render: v => classes.find(c => c.id === parseInt(v))?.classname || v || "-" },
+        { key: "parent1",   label: "Parent 1" },
+        { key: "contact",   label: "Contact" },
+        { key: "transport", label: "Transport" },
+        { key: "joineddate",label: "Joined", render: v => formatDate(v) },
+        { key: "active",    label: "Status", render: v => <Badge color={v ? "green" : "gray"}>{v ? "Active" : "Inactive"}</Badge> },
       ]}
       formFields={[
-        { key: "studentid", label: "Student ID", required: true },
-        { key: "name", label: "Full Name", required: true },
-        { key: "nin", label: "NIN No" },
-        { key: "parent1", label: "Parent Name 1" },
-        { key: "parent2", label: "Parent Name 2" },
-        { key: "contact", label: "Contact No", type: "tel" },
-        { key: "email", label: "Email", type: "email" },
-        { key: "locationid", label: "Location", type: "select", options: locations.map(l => ({ value: l.id, label: l.name })) },
+        { key: "studentid", label: "Student ID",         required: true },
+        { key: "name",      label: "Full Name",          required: true },
+        { key: "nin",       label: "NIN No" },
+        { key: "dob",       label: "Date of Birth",      type: "date" },
+        { key: "gender",    label: "Gender",             type: "select", options: ["Male", "Female", "Other"] },
+        { key: "classid",   label: "Class",              type: "select", options: classes.map(c => ({ value: c.id, label: c.classname })) },
+        { key: "parent1",   label: "Parent Name 1" },
+        { key: "parent2",   label: "Parent Name 2" },
+        { key: "contact",   label: "Contact No",         type: "tel" },
+        { key: "email",     label: "Email",              type: "email" },
+        { key: "locationid",label: "Location",           type: "select", options: locations.map(l => ({ value: l.id, label: l.name })) },
         { key: "transport", label: "Transport Required", type: "select", options: ["Yes", "No"] },
-        { key: "joineddate", label: "Joined Date", type: "date" },
-        { key: "active", label: "Active", type: "checkbox" },
+        { key: "joineddate",label: "Joined Date",        type: "date" },
+        { key: "active",    label: "Active",             type: "checkbox" },
       ]}
-      defaultForm={{ studentid: "", name: "", nin: "", parent1: "", parent2: "", contact: "", email: "", locationid: "", transport: "No", joineddate: "", active: true }}
+      defaultForm={{ studentid: "", name: "", nin: "", dob: "", gender: "", classid: "", parent1: "", parent2: "", contact: "", email: "", locationid: "", transport: "No", joineddate: "", active: true }}
     />,
     locations: <CRUDPage title="Locations" icon="📍" table="locations" moduleKey="locations" searchKey="name" userRole={role}
       columns={[
