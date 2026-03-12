@@ -28,6 +28,7 @@ const ROLES = ["Admin", "Staff", "Report", "Dashboard"];
 const REGIONS = ["South", "East", "North", "West"];
 const POSITIONS = ["Head Teacher", "Teacher"];
 
+
 // All system modules and their permission types
 const ALL_MODULES = [
   { key: "dashboard",     label: "Dashboard",       group: "Main" },
@@ -1054,6 +1055,9 @@ const Reports = ({ userRole = "Admin" }) => {
   ];
 
   const filteredStudents = students.filter(s => {
+  
+  const [studentClassFilter,setStudentClassFilter]= useState('');
+
     const loc = locations.find(l => l.id === s.locationid);
     if (locationFilter && s.locationid !== parseInt(locationFilter)) return false;
     if (regionFilter && loc?.region !== regionFilter) return false;
@@ -1191,6 +1195,8 @@ const Reports = ({ userRole = "Admin" }) => {
 // MAIN APP
 // ============================================================
 export default function SchoolSystem() {
+
+  
   const [user, setUser] = useState(null);
   const [activePage, setActivePage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
