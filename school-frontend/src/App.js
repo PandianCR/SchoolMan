@@ -1032,6 +1032,9 @@ const RolePermissions = ({ userRole }) => {
 
 // --- REPORTS ---
 const Reports = ({ userRole = "Admin" }) => {
+  
+  const [studentClassFilter,setStudentClassFilter]= useState('');
+
   const canExport = hasPerm(userRole, "reports", "export");
   const [activeReport, setActiveReport] = useState("teachers");
   const [locationFilter, setLocationFilter] = useState("");
@@ -1056,7 +1059,6 @@ const Reports = ({ userRole = "Admin" }) => {
 
   const filteredStudents = students.filter(s => {
   
-  const [studentClassFilter,setStudentClassFilter]= useState('');
 
     const loc = locations.find(l => l.id === s.locationid);
     if (locationFilter && s.locationid !== parseInt(locationFilter)) return false;
